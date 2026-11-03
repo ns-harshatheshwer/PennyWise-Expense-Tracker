@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PennyWise - Personal Expense Tracker</title>
+  <meta name="description" content="A premium personal expense tracker with Python OOP backend, SQLite persistence, interactive budget analytics, and expense management.">
+  <meta property="og:title" content="PennyWise - Personal Expense Tracker">
+  <meta property="og:description" content="A premium personal expense tracker with Python OOP backend, SQLite persistence, interactive budget analytics, and expense management.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons for crisp UI icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Chart.js for data visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Main Application Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="theme-dark">
+  <div class="app-layout">
+    <!-- Collapsible Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-icon">
+            <i class="fa-solid fa-coins"></i>
+          </div>
+          <div class="brand-text">
+            <span class="brand-title">PennyWise</span>
+            <span class="brand-subtitle">Financial Clarity</span>
+          </div>
+        </div>
+        <button class="btn-icon mobile-close-btn" id="sidebarCloseBtn" aria-label="Close sidebar">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="dashboard">
+          <i class="fa-solid fa-chart-line"></i>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-view="transactions">
+          <i class="fa-solid fa-receipt"></i>
+          <span>Transactions</span>
+          <span class="badge" id="navTxCount">0</span>
+        </button>
+        <button class="nav-item" data-view="budget">
+          <i class="fa-solid fa-wallet"></i>
+          <span>Budget Manager</span>
+        </button>
+        <button class="nav-item" data-view="analytics">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>Analytics & Trends</span>
+        </button>
+        <button class="nav-item" data-view="categories">
+          <i class="fa-solid fa-tags"></i>
+          <span>Categories</span>
+        </button>
+        <button class="nav-item" data-view="oop-architecture">
+          <i class="fa-solid fa-sitemap"></i>
+          <span>OOP Architecture</span>
+          <span class="badge badge-accent">Academic</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="tech-stack-card">
+          <div class="tech-stack-title">
+            <i class="fa-brands fa-python"></i>
+            <span>Python OOP Backend</span>
+          </div>
+          <div class="tech-stack-desc">Flask REST API &bull; SQLite3</div>
+          <div class="tech-pills">
+            <span class="tech-pill">Encapsulation</span>
+            <span class="tech-pill">Inheritance</span>
+            <span class="tech-pill">Polymorphism</span>
+          </div>
+        </div>
+        <div class="quick-actions">
+          <button class="btn btn-sm btn-outline w-full" id="btnSeedDemo" title="Restore sample transactions">
+            <i class="fa-solid fa-rotate-left"></i> Reload Demo Data
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="btn-icon mobile-menu-btn" id="mobileMenuBtn" aria-label="Open sidebar menu">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div class="page-title-box">
+            <h1 class="page-title" id="pageTitle">Dashboard Overview</h1>
+            <p class="page-subtitle" id="pageSubtitle">Real-time expenditure tracking and budget intelligence</p>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Month Selector -->
+          <div class="month-selector-wrapper">
+            <i class="fa-regular fa-calendar"></i>
+            <input type="month" id="globalMonthPicker" class="month-input" title="Filter by Month">
+          </div>
+
+          <!-- Add Transaction Button -->
+          <button class="btn btn-primary" id="btnOpenAddModal">
+            <i class="fa-solid fa-plus"></i>
+            <span>Add Expense</span>
+          </button>
+
+          <!-- Export CSV Button -->
+          <a href="/api/export/csv" class="btn btn-secondary btn-icon-only" title="Export CSV Report" download>
+            <i class="fa-solid fa-file-export"></i>
+          </a>
+        </div>
+      </header>
+
+      <!-- Budget Alert Banner (Shows when limit warning/exceeded) -->
+      <div id="budgetAlertContainer" class="alert-container hidden">
+        <div class="alert alert-warning" id="budgetAlertBox">
+          <i class="fa-solid fa-triangle-exclamation alert-icon"></i>
+          <div class="alert-content">
+            <strong id="alertHeading">Budget Warning</strong>
+            <p id="alertMessage">You have reached 80% of your allocated monthly budget.</p>
+          </div>
+          <button class="btn-sm btn-secondary" id="btnQuickAdjustBudget">Adjust Budget</button>
+        </div>
+      </div>
+
+      <!-- VIEW 1: DASHBOARD -->
+      <section class="view-section active" id="view-dashboard">
+        <!-- Metric Cards Grid -->
+        <div class="metrics-grid">
+          <!-- Total Expenses -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Total Expenses</span>
+              <div class="metric-icon-wrap bg-emerald-dim">
+                <i class="fa-solid fa-money-bill-wave text-emerald"></i>
+              </div>
+            </div>
+            <div class="metric-value" id="statTotalExpenses">$0.00</div>
+            <div class="metric-footer">
+              <span class="badge badge-subtle" id="statTxCount">0 recorded</span>
+              <span class="metric-subtext">Lifetime tracked</span>
+            </div>
+          </div>
+
+          <!-- Current Month Spending -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Monthly Spending</span>
+              <div class="metric-icon-wrap bg-blue-dim">
+                <i class="fa-solid fa-calendar-check text-blue"></i>
+              </div>
+            </div>
+            <div class="metric-value" id="statMonthlySpending">$0.00</div>
+            <div class="metric-footer">
+              <span class="badge badge-blue" id="statMonthLabel">This Month</span>
+              <span class="metric-subtext" id="statDailyAvg">Avg $0/day</span>
+            </div>
+          </div>
+
+          <!-- Remaining Budget -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Remaining Budget</span>
+              <div class="metric-icon-wrap" id="budgetIconWrap">
+                <i class="fa-solid fa-piggy-bank text-emerald" id="budgetIcon"></i>
+              </div>
+            </div>
+            <div class="metric-value" id="statRemainingBudget">$0.00</div>
+            <div class="metric-footer">
+              <span class="badge badge-emerald" id="statBudgetStatus">On Track</span>
+              <span class="metric-subtext" id="statBudgetLimit">of $0 limit</span>
+            </div>
+          </div>
+
+          <!-- Budget Utilization -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Budget Utilisation</span>
+              <div class="metric-icon-wrap bg-purple-dim">
+                <i class="fa-solid fa-gauge-high text-purple"></i>
+              </div>
+            </div>
+            <div class="metric-value" id="statUtilization">0%</div>
+            <div class="metric-progress-wrap">
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="statProgressBar" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard Charts Row -->
+        <div class="charts-grid">
+          <!-- Monthly Spending Trend -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Monthly Spending Trend</h2>
+                <p class="card-subtitle">Expenditure progression over the past 6 months</p>
+              </div>
+              <span class="pill-badge"><i class="fa-solid fa-arrow-trend-up"></i> Trends</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="monthlyTrendChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Category Breakdown -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Category Breakdown</h2>
+                <p class="card-subtitle">Distribution of spending this month</p>
+              </div>
+              <span class="pill-badge"><i class="fa-solid fa-chart-pie"></i> Distribution</span>
+            </div>
+            <div class="chart-container chart-doughnut-container">
+              <canvas id="categoryChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Transactions & Category List Table -->
+        <div class="dashboard-bottom-grid">
+          <!-- Recent Transactions -->
+          <div class="card table-card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Recent Transactions</h2>
+                <p class="card-subtitle">Latest 6 expenses recorded</p>
+              </div>
+              <button class="btn-sm btn-outline" id="btnViewAllTransactions">
+                View All <i class="fa-solid fa-arrow-right"></i>
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table" id="recentTransactionsTable">
+                <thead>
+                  <tr>
+                    <th>Expense</th>
+                    <th>Category</th>
+                    <th>Date</th>
+                    <th class="text-right">Amount</th>
+                    <th class="text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="recentTransactionsBody">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
+              <div id="recentEmptyState" class="empty-state hidden">
+                <i class="fa-regular fa-folder-open empty-icon"></i>
+                <p>No recent transactions recorded yet.</p>
+                <button class="btn btn-sm btn-primary mt-2" onclick="PennyWise.openAddModal()">Add Your First Expense</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Category Ranking Card -->
+          <div class="card category-ranking-card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Category Spending</h2>
+                <p class="card-subtitle">Ranked by monthly expenditure</p>
+              </div>
+            </div>
+            <div class="category-list" id="categoryRankingList">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: TRANSACTIONS MANAGEMENT -->
+      <section class="view-section" id="view-transactions">
+        <div class="card">
+          <!-- Filter & Search Toolbar -->
+          <div class="filter-toolbar">
+            <div class="search-input-wrap">
+              <i class="fa-solid fa-magnifying-glass search-icon"></i>
+              <input type="text" id="txSearchInput" class="search-input" placeholder="Search by name or description...">
+            </div>
+
+            <div class="filter-group">
+              <div class="select-wrap">
+                <i class="fa-solid fa-filter"></i>
+                <select id="txCategoryFilter" class="filter-select">
+                  <option value="all">All Categories</option>
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="select-wrap">
+                <i class="fa-solid fa-arrow-down-wide-short"></i>
+                <select id="txSortBy" class="filter-select">
+                  <option value="date-DESC">Date: Newest First</option>
+                  <option value="date-ASC">Date: Oldest First</option>
+                  <option value="amount-DESC">Amount: Highest First</option>
+                  <option value="amount-ASC">Amount: Lowest First</option>
+                  <option value="title-ASC">Name: A to Z</option>
+                </select>
+              </div>
+
+              <button class="btn btn-outline" id="btnResetFilters" title="Clear all filters">
+                <i class="fa-solid fa-xmark"></i> Reset
+              </button>
+            </div>
+          </div>
+
+          <!-- Transaction List Table -->
+          <div class="table-responsive">
+            <table class="data-table" id="allTransactionsTable">
+              <thead>
+                <tr>
+                  <th>Title & Description</th>
+                  <th>Category</th>
+                  <th>Date</th>
+                  <th class="text-right">Amount</th>
+                  <th class="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="allTransactionsBody">
+                <!-- Dynamic Content -->
+              </tbody>
+            </table>
+            <div id="txEmptyState" class="empty-state hidden">
+              <i class="fa-solid fa-receipt empty-icon"></i>
+              <h3>No matching transactions found</h3>
+              <p>Try adjusting your search query, clearing filters, or adding a new expense.</p>
+              <button class="btn btn-primary mt-3" onclick="PennyWise.openAddModal()">
+                <i class="fa-solid fa-plus"></i> Add New Expense
+              </button>
+            </div>
+          </div>
+
+          <!-- Table Footer -->
+          <div class="table-footer">
+            <div class="table-info" id="txCountSummary">Showing 0 transactions</div>
+            <div class="table-actions">
+              <button class="btn-sm btn-outline text-danger" id="btnClearAllData" title="Wipe all expenses">
+                <i class="fa-solid fa-trash-can"></i> Clear All Data
+              </button>
+              <a href="/api/export/csv" class="btn-sm btn-secondary" download>
+                <i class="fa-solid fa-download"></i> Download CSV
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 3: BUDGET MANAGEMENT -->
+      <section class="view-section" id="view-budget">
+        <div class="budget-layout-grid">
+          <!-- Left: Current Budget Overview & Status -->
+          <div class="card budget-hero-card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Monthly Budget Status</h2>
+                <p class="card-subtitle">Active budget tracking and spending ceiling</p>
+              </div>
+              <span class="badge badge-emerald" id="budgetPageStatusBadge">Safe</span>
+            </div>
+
+            <div class="budget-big-stats">
+              <div class="budget-stat-group">
+                <span class="budget-stat-label">Total Monthly Budget</span>
+                <span class="budget-stat-number text-emerald" id="budgetPageLimit">$0.00</span>
+              </div>
+              <div class="budget-stat-divider"></div>
+              <div class="budget-stat-group">
+                <span class="budget-stat-label">Current Spent</span>
+                <span class="budget-stat-number" id="budgetPageSpent">$0.00</span>
+              </div>
+              <div class="budget-stat-divider"></div>
+              <div class="budget-stat-group">
+                <span class="budget-stat-label">Remaining Safe Spend</span>
+                <span class="budget-stat-number" id="budgetPageRemaining">$0.00</span>
+              </div>
+            </div>
+
+            <!-- Large Budget Utilization Meter -->
+            <div class="budget-gauge-box">
+              <div class="gauge-header">
+                <span class="gauge-label">Budget Consumption</span>
+                <span class="gauge-percent" id="budgetPagePercent">0%</span>
+              </div>
+              <div class="progress-bar-bg large-bar">
+                <div class="progress-bar-fill" id="budgetPageProgressBar" style="width: 0%"></div>
+              </div>
+              <div class="gauge-threshold-indicator">
+                <span>0%</span>
+                <span class="threshold-marker" id="thresholdMarker">Warning at 80%</span>
+                <span>100%</span>
+              </div>
+            </div>
+
+            <!-- Dynamic Advisory Banner -->
+            <div class="advisory-card" id="budgetAdvisoryCard">
+              <i class="fa-solid fa-shield-halved text-emerald" id="advisoryIcon"></i>
+              <div class="advisory-text">
+                <h4 id="advisoryTitle">Budget Health: Excellent</h4>
+                <p id="advisoryDetail">Your expenditures are currently well within your monthly target.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Update Budget Settings Form -->
+          <div class="card budget-settings-card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Set Monthly Budget</h2>
+                <p class="card-subtitle">Configure spending limit and alert threshold</p>
+              </div>
+            </div>
+
+            <form id="budgetSettingsForm" class="form-standard">
+              <div class="form-group">
+                <label for="budgetInputAmount" class="form-label">Monthly Limit ($)</label>
+                <div class="input-prefix-wrap">
+                  <span class="input-prefix">$</span>
+                  <input type="number" id="budgetInputAmount" class="form-input" min="1" step="10" placeholder="e.g. 2500" required>
+                </div>
+              </div>
+
+              <!-- Quick Presets -->
+              <div class="quick-presets">
+                <span class="presets-label">Quick Presets:</span>
+                <div class="preset-buttons">
+                  <button type="button" class="btn-preset" data-val="1000">$1,000</button>
+                  <button type="button" class="btn-preset" data-val="2000">$2,000</button>
+                  <button type="button" class="btn-preset" data-val="2500">$2,500</button>
+                  <button type="button" class="btn-preset" data-val="3500">$3,500</button>
+                  <button type="button" class="btn-preset" data-val="5000">$5,000</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="budgetInputThreshold" class="form-label">
+                  Alert Warning Threshold: <strong id="thresholdValueDisplay">80%</strong>
+                </label>
+                <input type="range" id="budgetInputThreshold" class="form-range" min="50" max="95" step="5" value="80">
+                <span class="form-helper">An alert will trigger when expenditures reach this percentage of your budget.</span>
+              </div>
+
+              <div class="form-actions mt-4">
+                <button type="submit" class="btn btn-primary w-full">
+                  <i class="fa-solid fa-floppy-disk"></i> Save Budget
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 4: ANALYTICS & TRENDS -->
+      <section class="view-section" id="view-analytics">
+        <div class="analytics-metrics-grid">
+          <div class="metric-card">
+            <span class="metric-label">Average Daily Expense</span>
+            <div class="metric-value" id="analyticsAvgDaily">$0.00</div>
+            <div class="metric-subtext">Computed across current billing cycle</div>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Top Spending Category</span>
+            <div class="metric-value text-emerald" id="analyticsTopCategory">—</div>
+            <div class="metric-subtext" id="analyticsTopCategoryAmount">$0.00 this month</div>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Total Monthly Transactions</span>
+            <div class="metric-value" id="analyticsTxCount">0</div>
+            <div class="metric-subtext">Expenses logged this month</div>
+          </div>
+        </div>
+
+        <div class="analytics-charts-grid">
+          <!-- Weekly Spending Trends -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Weekly Spending Activity</h2>
+                <p class="card-subtitle">Daily expenditure breakdown for the past 7 days</p>
+              </div>
+              <span class="pill-badge"><i class="fa-solid fa-chart-column"></i> Daily Trends</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="weeklyTrendChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Monthly Comparison Chart -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Category Spending Comparison</h2>
+                <p class="card-subtitle">Volume per category</p>
+              </div>
+              <span class="pill-badge"><i class="fa-solid fa-chart-pie"></i> Share</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="analyticsCategoryBarChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 5: CATEGORIES VIEW -->
+      <section class="view-section" id="view-categories">
+        <div class="categories-view-header">
+          <div>
+            <h2 class="section-title">Expense Categories</h2>
+            <p class="section-subtitle">Pre-configured categories with budget targets and color badges</p>
+          </div>
+          <button class="btn btn-primary" id="btnOpenAddCategoryModal">
+            <i class="fa-solid fa-plus"></i> Add Custom Category
+          </button>
+        </div>
+
+        <div class="categories-cards-grid" id="categoriesGrid">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- VIEW 6: OOP ARCHITECTURE (Academic Showcase) -->
+      <section class="view-section" id="view-oop-architecture">
+        <div class="card oop-hero-card">
+          <div class="oop-hero-header">
+            <div class="oop-badge-group">
+              <span class="badge badge-emerald">Academic Evaluation</span>
+              <span class="badge badge-subtle">Python 3.10+ / Flask / SQLite</span>
+            </div>
+            <h2 class="oop-title">PennyWise Object-Oriented Architecture</h2>
+            <p class="oop-lead">
+              A comprehensive demonstration of Object-Oriented Programming (OOP) design principles implemented in genuine Python source files.
+              Business logic, financial calculations, data encapsulation, and database abstractions are strictly decoupled from the web delivery layer.
+            </p>
+          </div>
+
+          <!-- The 5 Core Pillars Grid -->
+          <div class="oop-pillars-grid">
+            <!-- Abstraction -->
+            <div class="oop-pillar-card">
+              <div class="pillar-icon bg-emerald-dim text-emerald">
+                <i class="fa-solid fa-puzzle-piece"></i>
+              </div>
+              <h3 class="pillar-name">1. Abstraction</h3>
+              <p class="pillar-desc">
+                Implemented via <code>BaseTransaction(ABC)</code> in <code>models/transaction.py</code>. Declares abstract contract methods:
+                <code>to_dict()</code>, <code>calculate_monthly_impact()</code>, <code>summary()</code>, and <code>validate()</code>.
+              </p>
+              <div class="code-pill">from abc import ABC, abstractmethod</div>
+            </div>
+
+            <!-- Encapsulation -->
+            <div class="oop-pillar-card">
+              <div class="pillar-icon bg-blue-dim text-blue">
+                <i class="fa-solid fa-lock"></i>
+              </div>
+              <h3 class="pillar-name">2. Encapsulation</h3>
+              <p class="pillar-desc">
+                Protected instance attributes (e.g. <code>_amount</code>, <code>_title</code>, <code>_date</code>) accessed exclusively via validated 
+                <code>@property</code> getters and setters. Ensures amounts are strictly &gt; $0 and dates conform to ISO YYYY-MM-DD.
+              </p>
+              <div class="code-pill">@property / @amount.setter</div>
+            </div>
+
+            <!-- Inheritance -->
+            <div class="oop-pillar-card">
+              <div class="pillar-icon bg-purple-dim text-purple">
+                <i class="fa-solid fa-diagram-project"></i>
+              </div>
+              <h3 class="pillar-name">3. Inheritance</h3>
+              <p class="pillar-desc">
+                <code>Expense</code> inherits from <code>Transaction</code>, and <code>RecurringExpense</code> inherits from <code>Expense</code>.
+                Child classes invoke <code>super().__init__()</code> and extend baseline functionality with categorization and recurrence frequency.
+              </p>
+              <div class="code-pill">class Expense(Transaction):</div>
+            </div>
+
+            <!-- Polymorphism -->
+            <div class="oop-pillar-card">
+              <div class="pillar-icon bg-amber-dim text-amber">
+                <i class="fa-solid fa-shapes"></i>
+              </div>
+              <h3 class="pillar-name">4. Polymorphism</h3>
+              <p class="pillar-desc">
+                Subclasses override <code>to_dict()</code>, <code>summary()</code>, and <code>calculate_monthly_impact()</code>.
+                <code>ExpenseManager</code> treats collections of transaction objects uniformly while each executes its specialized calculation.
+              </p>
+              <div class="code-pill">def summary(self) -> str:</div>
+            </div>
+
+            <!-- Composition -->
+            <div class="oop-pillar-card">
+              <div class="pillar-icon bg-teal-dim text-teal">
+                <i class="fa-solid fa-cubes"></i>
+              </div>
+              <h3 class="pillar-name">5. Composition</h3>
+              <p class="pillar-desc">
+                <code>ExpenseManager</code> possesses a <code>DatabaseManager</code> and aggregates <code>Budget</code>, <code>Category</code>, and 
+                <code>Expense</code> instances to perform high-level budgeting, analytics, and CSV export.
+              </p>
+              <div class="code-pill">self._db = DatabaseManager()</div>
+            </div>
+
+            <!-- Database Encapsulation -->
+            <div class="oop-pillar-card">
+              <div class="pillar-icon bg-rose-dim text-rose">
+                <i class="fa-solid fa-database"></i>
+              </div>
+              <h3 class="pillar-name">6. Database Persistence</h3>
+              <p class="pillar-desc">
+                <code>DatabaseManager</code> isolates SQLite3 connection pooling, SQL queries, schema creation, transactions, and hydration 
+                of database rows directly into strongly typed OOP instances.
+              </p>
+              <div class="code-pill">class DatabaseManager:</div>
+            </div>
+          </div>
+
+          <!-- Class Hierarchy Visual Diagram -->
+          <div class="class-diagram-box">
+            <h3 class="diagram-title"><i class="fa-solid fa-network-wired"></i> UML Class Hierarchy</h3>
+            <div class="ascii-diagram">
+┌────────────────────────────────────────────────────────┐
+│                   BaseTransaction (ABC)                │
+├────────────────────────────────────────────────────────┤
+│ + to_dict() : dict                                     │
+│ + calculate_monthly_impact(month) : float              │
+│ + summary() : str                                      │
+│ + validate() : bool                                    │
+└──────────────────────────┬─────────────────────────────┘
+                           │ inherits
+┌──────────────────────────▼─────────────────────────────┐
+│                      Transaction                       │
+├────────────────────────────────────────────────────────┤
+│ - _id, _title, _amount, _date, _description            │
+│ + @property getters & setters with validation          │
+└──────────────────────────┬─────────────────────────────┘
+                           │ inherits
+┌──────────────────────────▼─────────────────────────────┐
+│                        Expense                         │
+├────────────────────────────────────────────────────────┤
+│ - _category : str                                      │
+│ + summary() [Polymorphic override]                     │
+│ + to_dict() [Polymorphic override]                     │
+└──────────────────────────┬─────────────────────────────┘
+                           │ inherits
+┌──────────────────────────▼─────────────────────────────┐
+│                   RecurringExpense                     │
+├────────────────────────────────────────────────────────┤
+│ - _frequency : str (daily/weekly/monthly/yearly)       │
+│ + calculate_monthly_impact() [Polymorphic override]   │
+└────────────────────────────────────────────────────────┘
+
+┌──────────────────────────┐       ┌─────────────────────┐
+│     DatabaseManager      │◄──────┤   ExpenseManager    │
+│  (SQLite3 Data Layer)    │owns   │ (Domain Controller) │
+└──────────────────────────┘       └──────────┬──────────┘
+                                              │ composes
+                                   ┌──────────▼──────────┐
+                                   │  Budget & Category  │
+                                   └─────────────────────┘
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL: ADD / EDIT EXPENSE -->
+  <div class="modal-overlay" id="expenseModal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="expenseModalTitle">Add New Expense</h3>
+        <button class="btn-icon modal-close" id="btnCloseExpenseModal" aria-label="Close modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="expenseForm" class="modal-form">
+        <input type="hidden" id="formExpenseId" value="">
+
+        <!-- Title -->
+        <div class="form-group">
+          <label for="formTitle" class="form-label">Expense Title <span class="required">*</span></label>
+          <input type="text" id="formTitle" class="form-input" placeholder="e.g. Whole Foods Groceries" required minlength="2" maxlength="100">
+        </div>
+
+        <!-- Amount and Date in 2 columns -->
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="formAmount" class="form-label">Amount ($) <span class="required">*</span></label>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">$</span>
+              <input type="number" id="formAmount" class="form-input" placeholder="0.00" step="0.01" min="0.01" required>
+            </div>
+          </div>
+
+          <div class="form-group flex-1">
+            <label for="formDate" class="form-label">Date <span class="required">*</span></label>
+            <input type="date" id="formDate" class="form-input" required>
+          </div>
+        </div>
+
+        <!-- Category -->
+        <div class="form-group">
+          <label for="formCategory" class="form-label">Category <span class="required">*</span></label>
+          <select id="formCategory" class="form-select" required>
+            <option value="Food">🍔 Food</option>
+            <option value="Transport">🚗 Transport</option>
+            <option value="Shopping">🛍️ Shopping</option>
+            <option value="Education">🎓 Education</option>
+            <option value="Entertainment">🎬 Entertainment</option>
+            <option value="Bills">🧾 Bills</option>
+            <option value="Healthcare">💊 Healthcare</option>
+            <option value="Others">🏷️ Others</option>
+          </select>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group">
+          <label for="formDescription" class="form-label">Notes & Description <span class="optional">(optional)</span></label>
+          <textarea id="formDescription" class="form-textarea" rows="2" placeholder="Additional details or receipt notes..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="btnCancelExpenseModal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveExpense">
+            <i class="fa-solid fa-check"></i> Save Expense
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD CUSTOM CATEGORY -->
+  <div class="modal-overlay" id="categoryModal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Create Custom Category</h3>
+        <button class="btn-icon modal-close" id="btnCloseCategoryModal" aria-label="Close modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="categoryForm" class="modal-form">
+        <div class="form-group">
+          <label for="catFormName" class="form-label">Category Name <span class="required">*</span></label>
+          <input type="text" id="catFormName" class="form-input" placeholder="e.g. Fitness & Gym" required minlength="2" maxlength="30">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="catFormColor" class="form-label">Badge Color</label>
+            <input type="color" id="catFormColor" class="form-color-picker" value="#10B981">
+          </div>
+
+          <div class="form-group flex-1">
+            <label for="catFormLimit" class="form-label">Monthly Target ($)</label>
+            <input type="number" id="catFormLimit" class="form-input" placeholder="e.g. 150" min="0" step="10">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="btnCancelCategoryModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i> Add Category
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: DELETE CONFIRMATION -->
+  <div class="modal-overlay" id="deleteConfirmModal" aria-hidden="true">
+    <div class="modal-card modal-card-sm">
+      <div class="modal-header">
+        <h3 class="modal-title text-danger"><i class="fa-solid fa-triangle-exclamation"></i> Delete Expense</h3>
+        <button class="btn-icon modal-close" id="btnCloseDeleteModal" aria-label="Close modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to permanently delete this transaction? This action cannot be undone.</p>
+        <p class="delete-item-title" id="deleteTargetTitle"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="btnCancelDelete">Cancel</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmDelete">
+          <i class="fa-solid fa-trash-can"></i> Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Main Application Script -->
+  <script src="/static/js/script.js"></script>
+</body>
+</html>

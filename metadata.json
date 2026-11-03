@@ -1,0 +1,8 @@
+{
+  "name": "PennyWise - Personal Expense Tracker",
+  "description": "A premium personal expense tracker with Python OOP backend, SQLite persistence, interactive budget analytics, and expense management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
